@@ -1,0 +1,83 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yediklerimi Yak - Simge Oluşturucu</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background: #fff7ed;
+  color: #432818;
+  padding: 25px;
+}
+h1 { color: #b45309; }
+canvas {
+  max-width: 85%;
+  border-radius: 20px;
+  margin: 20px auto;
+  box-shadow: 0 4px 15px #0002;
+}
+button {
+  display: block;
+  width: 90%;
+  max-width: 350px;
+  margin: 12px auto;
+  padding: 16px;
+  font-size: 17px;
+  font-weight: bold;
+  background: #ef7900;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+<h1>🍟 Yediklerimi Yak</h1>
+<p>Uygulama simgelerini oluştur ve indir.</p>
+<canvas id="simge" width="512" height="512"></canvas>
+<button onclick="indir(192,'icon-192.png')">
+192 × 192 simgesini indir
+</button>
+<button onclick="indir(512,'icon-512.png')">
+512 × 512 simgesini indir
+</button>
+<button onclick="indir(180,'apple-touch-icon.png')">
+180 × 180 Apple simgesini indir
+</button>
+<script>
+const canvas = document.getElementById("simge");
+const ctx = canvas.getContext("2d");
+
+function ciz(boyut) {
+  canvas.width = boyut;
+  canvas.height = boyut;
+
+  ctx.fillStyle = "#ef7900";
+  ctx.fillRect(0, 0, boyut, boyut);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = Math.floor(boyut * 0.65) +
+    "px 'Segoe UI Emoji','Apple Color Emoji',sans-serif";
+  ctx.fillText("🍟", boyut / 2, boyut / 2);
+}
+
+function indir(boyut, ad) {
+  ciz(boyut);
+  const baglanti = document.createElement("a");
+  baglanti.download = ad;
+  baglanti.href = canvas.toDataURL("image/png");
+  baglanti.click();
+  ciz(512);
+}
+
+ciz(512);
+</script>
+</body>
+</html>
