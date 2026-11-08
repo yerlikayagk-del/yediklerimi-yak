@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ef7900">
+<meta name="description" content="Yediklerimi Yak - eğlenceli enerji simülasyonu">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Yediklerimi Yak</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,Arial,sans-serif;background:#fff7ed;color:#342113}
+main{max-width:540px;margin:auto;padding:18px}
+header{text-align:center;padding:23px 12px;background:#ef7900;color:white;border-radius:20px}
+header .emoji{font-size:54px}
+h1{margin:5px 0;font-size:30px}
+h2{font-size:21px;margin:15px 0}
+p{line-height:1.55}
+.card{background:white;border-radius:17px;padding:17px;margin:15px 0;box-shadow:0 3px 15px #66330016}
+label{display:block;font-size:17px;font-weight:700;margin-bottom:9px}
+input{width:100%;padding:14px;font-size:21px;border:2px solid #b76316;border-radius:12px}
+button{font:inherit;cursor:pointer;border-radius:13px;min-height:54px;padding:12px;border:2px solid #b45309}
+.foods{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.food{background:#ffedd5;text-align:center;font-weight:700;color:#43270f}
+.food span{display:block;font-size:34px}
+.food small{display:block;font-size:14px;font-weight:500}
+.food.active{background:#ef7900;color:white;border-color:#7c2d12}
+.primary{background:#ef7900;color:white;font-weight:bold;width:100%}
+.secondary{background:#fff0d5;color:#6b310b;width:100%}
+.actions{display:grid;gap:10px;margin-top:14px}
+.result{background:#fff6e6;border:2px dashed #ec7900;border-radius:13px;padding:15px;margin-top:12px}
+.choice{text-align:center;background:white;padding:12px;margin:9px 0;border-radius:12px}
+.choice strong{font-size:26px;color:#9a4000}
+.or{text-align:center;font-weight:900;color:#9a4000}
+.error{color:#a31515;font-weight:700;min-height:23px}
+.message{background:#fff0d5;border-radius:12px;padding:13px;font-weight:600;margin-top:10px}
+[hidden]{display:none!important}
+button:disabled{opacity:.5;cursor:not-allowed}
+footer{text-align:center;font-size:13px;color:#684e39;padding:18px}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="emoji">🍟</div>
+<h1>Yediklerimi Yak</h1>
+<p>Lezzetin eğlenceli enerji faturası!</p>
+</header>
+
+<section class="card">
+<label for="weight">Örnek ağırlık (kg)</label>
+<input id="weight" type="number" value="70" step="any" inputmode="decimal">
+<p id="error" class="error" role="alert"></p>
+<small>Yalnızca örnek hesaplama içindir. Testlerde 70 ve 90 kg kullanın.</small>
+</section>
+
+<section class="card">
+<h2>Bugün ne seçiyoruz?</h2>
+<div class="foods">
+<button class="food" data-id="0"><span>🥔</span>Küçük paket cips<small>40 g · 210 kcal</small></button>
+<button class="food" data-id="1"><span>🍯</span>Baklava<small>1 dilim, 40 g · 175 kcal</small></button>
+<button class="food" data-id="2"><span>🥤</span>Kola<small>330 ml · 140 kcal</small></button>
+<button class="food" data-id="3"><span>🍫</span>Çikolatalı gofret<small>35 g · 185 kcal</small></button>
+</div>
+</section>
+
+<section id="bill" class="card" hidden>
+<h2>🧾 FATURA</h2>
+<p id="selected"></p>
+<div class="result">
+<p>Bu enerji yaklaşık olarak aşağıdaki alternatiflerden <strong>birine</strong> karşılık gelir:</p>
+<div class="choice"><strong id="walk"></strong><br>dakika tempolu yürüyüş</div>
+<div class="or">VEYA</div>
+<div class="choice"><strong id="squats"></strong><br>squat</div>
+<div class="or">VEYA</div>
+<div class="choice"><strong id="stairs"></strong><br>kat merdiven</div>
+</div>
+<div class="actions">
+<button class="primary" id="buy">Satın alıyorum</button>
+<button class="secondary" id="bargain">Pazarlık yap</button>
+<button class="primary" id="simulate">Simülasyonu başlat</button>
+</div>
+<div id="message" class="message" role="status" hidden></div>
+<div id="timer" class="message" aria-live="polite" hidden></div>
+</section>
+
+<footer>
+<p>Hesaplar yaklaşık değerlerdir. Gerçek enerji bilgisi için paket etiketi esas alınır.</p>
+<p>Yiyecek suç, egzersiz ceza değildir. Bu bir sağlık veya diyet önerisi değildir.</p>
+<strong>Eğitim amaçlı ekran simülasyonudur.</strong>
+</footer>
+</main>
+<script>
+"use strict";
+const foods=[
+{name:"Küçük paket cips (40 g)",kcal:210},
+{name:"Baklava (1 dilim, 40 g)",kcal:175},
+{name:"Kola (330 ml)",kcal:140},
+{name:"Çikolatalı gofret (35 g)",kcal:185}
+];
+const $=id=>document.getElementById(id);
+const weight=$("weight");
+let chosen=null,interval=null,running=false;
+let saved;
+try{saved=localStorage.getItem("ornekAgirlik");}catch(e){}
+if(saved!==null&&saved!==undefined&&saved.trim()!==""&&
+ Number.isFinite(Number(saved))&&Number(saved)>0)weight.value=saved;
+
+function validWeight(){
+ const raw=weight.value.trim();
+ const kg=Number(raw);
+ if(raw===""||!Number.isFinite(kg)||kg<=0){
+   $("error").textContent="Lütfen sıfırdan büyük, geçerli bir örnek ağırlık girin.";
+   return null;
+ }
+ $("error").textContent="";
+ try{localStorage.setItem("ornekAgirlik",String(kg));}catch(e){}
+ return kg;
+}
+function resetTimer(){
+ if(interval!==null)clearInterval(interval);
+ interval=null;running=false;
+ $("simulate").disabled=false;
+ $("timer").hidden=true;
+}
+function calculate(id){
+ const kg=validWeight();
+ if(kg===null){$("bill").hidden=true;return;}
+ resetTimer();
+ chosen=id;
+ const f=foods[id];
+ const perMin=met=>met*3.5*kg/200;
+ const walk=f.kcal/perMin(4.8);
+ const squat=f.kcal/perMin(6.5)*20;
+ const stairs=f.kcal/perMin(6.8)*4;
+ $("selected").textContent=f.name+" — "+f.kcal+" kcal";
+ $("walk").textContent=Math.round(walk);
+ $("squats").textContent=Math.round(squat);
+ $("stairs").textContent=Math.round(stairs);
+ $("message").hidden=true;
+ $("bill").hidden=false;
+ document.querySelectorAll(".food").forEach((b,i)=>{
+   b.classList.toggle("active",i===id);
+ });
+}
+document.querySelectorAll(".food").forEach(button=>{
+ button.addEventListener("click",()=>calculate(Number(button.dataset.id)));
+});
+weight.addEventListener("input",()=>{
+ resetTimer();
+ if(validWeight()===null)$("bill").hidden=true;
+ else if(chosen!==null)calculate(chosen);
+});
+$("buy").addEventListener("click",()=>{
+ $("message").textContent="Afiyet olsun!";
+ $("message").hidden=false;
+});
+$("bargain").addEventListener("click",()=>{
+ $("message").textContent=
+ "Pazarlık masasında yarım porsiyon ve 20 jumping jack var! "+
+ "Ama bu sadece mizahi bir ekran simülasyonu; egzersiz yapman gerekmiyor.";
+ $("message").hidden=false;
+});
+$("simulate").addEventListener("click",()=>{
+ if(running||chosen===null||validWeight()===null)return;
+ running=true;
+ $("simulate").disabled=true;
+ let count=20;
+ $("timer").hidden=false;
+ $("timer").textContent="Simülasyon: "+count;
+ interval=setInterval(()=>{
+   count--;
+   $("timer").textContent=count===0?
+     "Anlaşma tamam!":"Simülasyon: "+count;
+   if(count===0){
+     clearInterval(interval);
+     interval=null;running=false;
+     $("simulate").disabled=false;
+   }
+ },1500);
+});
+if("serviceWorker" in navigator){
+ window.addEventListener("load",()=>{
+   navigator.serviceWorker.register("sw.js").catch(()=>{});
+ });
+}
+</script>
+</body>
+</html>
